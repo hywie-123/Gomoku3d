@@ -14,7 +14,7 @@ class Game:
         players   : List [UUID],
         board_size: Tuple[int, int, int] = (11, 11, 11),):
         self.__board_size   : Tuple[int, int, int] = board_size
-        self.__move_count   : int                  = 1
+        self.__move_count   : int                  = 0
         self.__players      : List[UUID]           = players
         self.__player_next  : UUID                 = players[0]
         self.__winner       : UUID                 = PLAYER_NONE
@@ -26,10 +26,6 @@ class Game:
                     range(board_size[2]))),
                 range(board_size[1]))),
             range(board_size[0])))
-        self.__board \
-            [(self.__board_size[0] - 1) // 2] \
-            [(self.__board_size[1] - 1) // 2] \
-            [(self.__board_size[2] - 1) // 2] = BOX_NEUTRAL
 
     def get_board_size(self):
         return self.__board_size

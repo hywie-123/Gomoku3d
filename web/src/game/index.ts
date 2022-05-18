@@ -75,11 +75,6 @@ export class Game {
 
     public async start() {
         await this.loadModels();
-        this.boxStates
-            [(this.boardSize[0] - 1) / 2]!
-            [(this.boardSize[1] - 1) / 2]!
-            [(this.boardSize[2] - 1) / 2]! = BoxState.Neutral;
-        this.onBoardStateChanged();
 
         const prevHandler = this.canvas.onmousemove;
         this.canvas.onmousemove = (e: MouseEvent) => {
@@ -89,18 +84,27 @@ export class Game {
                 if (this.boxStates[i!]![j!]![k!]! === BoxState.Hover)
                     this.boxStates[i!]![j!]![k!]! = BoxState.Empty;
             });
-            this.boxHovered = null;
-            const hoverCandidate = this.getSolidNeighbors();
-            // console.log(hoverCandidate);
-            const raycaster = this.engine.getRayCaster(e.clientX, e.clientY);
-            const intersections = raycaster.intersectObjects(hoverCandidate.map(([i, j, k]) => this.boxObjects[i!]![j!]![k!]!));
-            // console.log(this.boxStates)
-            // console.log(intersections);
-            if (intersections.length > 0) {
-                const obj = intersections[0]!.object;
-                const [i, j, k] = hoverCandidate.find(([i, j, k]) => this.boxObjects[i!]![j!]![k!]! === obj)!;
-                this.boxStates[i!]![j!]![k!]! = BoxState.Hover;
-                this.boxHovered = [i!, j!, k!];
+            if (this.moveCount === 0) {
+                const [i, j, k] = [
+                    (this.boardSize[0] - 1) / 2,
+                    (this.boardSize[0] - 1) / 2,
+                    (this.boardSize[0] - 1) / 2,
+                ]
+                this.boxStates[i]![j]![k]! = BoxState.Hover;
+                this.boxHovered = [i, j, k];
+            }
+            else {
+                this.boxHovered = null;
+                const hoverCandidate = this.getSolidNeighbors();
+                const raycaster = this.engine.getRayCaster(e.clientX, e.clientY);
+                const intersections = raycaster.intersectObjects(
+                    hoverCandidate.map(([i, j, k]) => this.boxObjects[i!]![j!]![k!]!));
+                if (intersections.length > 0) {
+                    const obj = intersections[0]!.object;
+                    const [i, j, k] = hoverCandidate.find(([i, j, k]) => this.boxObjects[i!]![j!]![k!]! === obj)!;
+                    this.boxStates[i!]![j!]![k!]! = BoxState.Hover;
+                    this.boxHovered = [i!, j!, k!];
+                }
             }
             this.onBoardStateChanged();
         };
@@ -141,6 +145,7 @@ export class Game {
             if (winner === -1) {
                 window.location.href = "/static/defeat.html";
             }
+            this.moveCount = (await(await fetch('/api/v1/game/move-count')).json() as any).data["move_count"];
             this.boxStates = (await(await fetch('/api/v1/game/board')).json() as any).data;
             this.onBoardStateChanged();
             this.myTurn = (await(await fetch('/api/v1/game/me-next')).json() as any).data;
