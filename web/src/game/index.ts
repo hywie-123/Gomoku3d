@@ -1,22 +1,14 @@
 import * as three from 'three';
 import { OBJLoader } from 'three/examples/jsm/loaders/OBJLoader'
 
-import { GameEngine } from './engine';
-import { GameApi    } from './GameApi';
-
-interface GamePalette {
-    background: number,
-}
-
-const defaultPalette: GamePalette = {
-    background: 0xE1F5FE,
-}
+import { GameRenderer } from './GameRenderer';
+import { GameApi      } from './GameApi';
 
 enum BoxState { Empty, Player, Opponent, }
 
 export class Game {
-    private engine: GameEngine;
-    private api   : GameApi;
+    private renderer: GameRenderer;
+    private api     : GameApi;
 
     private canvas: HTMLCanvasElement;
     private scene : three.Scene;
@@ -55,16 +47,13 @@ export class Game {
 
         this.canvas = canvas;
         this.scene  = new three.Scene();
-        this.engine = new GameEngine(this.canvas, this.scene);
-        this.engine.setCamera(
+        this.renderer = new GameRenderer(this.canvas, this.scene);
+        this.renderer.setCamera(
             new three.Vector3(0, 0, 10),
             new three.Vector3(0, 0,  0));
 
         this.boardSize  = boardSize;
         this.boardState = array3D(this.boardSize, () => BoxState.Empty);
-
-        this.setPalette(defaultPalette);
-
         this.boardObject = new three.Object3D();
         this.boardObject.position.set(
             - (this.boardSize[0] - 1) / 2,
@@ -176,7 +165,7 @@ export class Game {
     private updateHoverPosition(mouseX: number, mouseY: number) {
         this.hoverPosition = null;
         const hoverCandidate = this.getHoverCandidates();
-        const raycaster = this.engine.getRayCaster(mouseX, mouseY);
+        const raycaster = this.renderer.getRayCaster(mouseX, mouseY);
         const intersections = raycaster.intersectObjects(
             hoverCandidate.map(([i, j, k]) => this.boxObjects[i!]![j!]![k!]!));
         if (intersections.length > 0) {
@@ -216,12 +205,6 @@ export class Game {
                     k + dk > 0 && k + dk < this.boardSize[2] &&
                     this.boardState[i + di]![j + dj]![k + dk]! !== BoxState.Empty)(
                     di_!, dj_!, dk_!)));
-    }
-
-    private palette: GamePalette = defaultPalette;
-    public setPalette(palette: GamePalette) {
-        this.palette = palette;
-        this.engine.renderer.setClearColor(this.palette.background);
     }
 }
 

@@ -1,7 +1,7 @@
 import * as three from 'three';
 import { ArcballControls } from 'three/examples/jsm/controls/ArcballControls'
 
-export class GameEngine {
+export class GameRenderer {
     private camera  : three.PerspectiveCamera;
     private controls: ArcballControls;
     
@@ -12,6 +12,7 @@ export class GameEngine {
         this.renderer = new three.WebGLRenderer({ canvas, antialias: true });
         this.renderer.shadowMap.enabled = true;
         this.renderer.setSize(window.innerWidth, window.innerHeight);
+        this.renderer.setClearColor(0xE1F5FE);
         this.renderer.setAnimationLoop(() => {
             this.renderer.render(this.scene, this.camera);
         })
