@@ -12,13 +12,7 @@ const defaultPalette: GamePalette = {
     background: 0xE1F5FE,
 }
 
-enum BoxState {
-    Hover = -2,
-    Neutral = -1,
-    Empty,
-    Player,
-    Opponent,
-}
+enum BoxState { Empty, Player, Opponent, }
 
 export class Game {
     private engine: GameEngine;
@@ -27,22 +21,23 @@ export class Game {
     private canvas: HTMLCanvasElement;
     private scene : three.Scene;
 
-    private boardSize: three.Vector3Tuple;
-    private boxStates: BoxState[][][];
+    private boardSize  : three.Vector3Tuple;
+    private boardState : BoxState[][][];
     private boardObject: three.Object3D;
     
-    private boxObjects: three.Mesh[][][] = undefined as any;
-    private boxGeometry: three.BufferGeometry;
-
+    private boxObjects  : three.Mesh[][][]     = undefined as any;
+    private boxGeometry : three.BufferGeometry = undefined as any;
     private boxMaterials: { [key in BoxState]: three.Material | null } = {
         [BoxState.Empty     ]: null,
-        [BoxState.Hover     ]: new three.MeshBasicMaterial({ color: 0x81D4FA, wireframe: true, }),
-        [BoxState.Neutral   ]: new three.MeshStandardMaterial({ color: 0xffffff }),
         [BoxState.Player    ]: new three.MeshStandardMaterial({ color: 0x81D4FA }),
         [BoxState.Opponent  ]: new three.MeshStandardMaterial({ color: 0xF06292 }),
     };
 
-    private boxHovered: three.Vector3Tuple | null = null;
+    private hoverPosition: three.Vector3Tuple | null = null;
+    private hoverObject  : three.Mesh = undefined as any;
+    private hoverMaterial: three.Material = new three.MeshBasicMaterial({
+        color: 0x81D4FA,
+        wireframe: true, });
 
     private mouseDownPosition: three.Vector2 | null = null;
 
@@ -65,10 +60,8 @@ export class Game {
             new three.Vector3(0, 0, 10),
             new three.Vector3(0, 0,  0));
 
-        this.boxGeometry = undefined as any;
-
-        this.boardSize = boardSize;
-        this.boxStates = array3D(this.boardSize, () => BoxState.Empty);
+        this.boardSize  = boardSize;
+        this.boardState = array3D(this.boardSize, () => BoxState.Empty);
 
         this.setPalette(defaultPalette);
 
@@ -86,67 +79,41 @@ export class Game {
     public async start() {
         await this.loadModels();
 
-        const prevHandler = this.canvas.onmousemove;
-        this.canvas.onmousemove = (e: MouseEvent) => {
-            if (prevHandler) (prevHandler as any)(e);
+        this.canvas.onmousemove = async (e: MouseEvent) => {
             if (! this.myTurn) return;
-            array3D(this.boardSize, (i, j, k) => [i, j, k]).flat().flat().forEach(([i, j, k]) => {
-                if (this.boxStates[i!]![j!]![k!]! === BoxState.Hover)
-                    this.boxStates[i!]![j!]![k!]! = BoxState.Empty;
-            });
-            if (this.moveCount === 0) {
-                const [i, j, k] = [
-                    (this.boardSize[0] - 1) / 2,
-                    (this.boardSize[0] - 1) / 2,
-                    (this.boardSize[0] - 1) / 2,
-                ]
-                this.boxStates[i]![j]![k]! = BoxState.Hover;
-                this.boxHovered = [i, j, k];
-            }
-            else {
-                this.boxHovered = null;
-                const hoverCandidate = this.getSolidNeighbors();
-                const raycaster = this.engine.getRayCaster(e.clientX, e.clientY);
-                const intersections = raycaster.intersectObjects(
-                    hoverCandidate.map(([i, j, k]) => this.boxObjects[i!]![j!]![k!]!));
-                if (intersections.length > 0) {
-                    const obj = intersections[0]!.object;
-                    const [i, j, k] = hoverCandidate.find(([i, j, k]) => this.boxObjects[i!]![j!]![k!]! === obj)!;
-                    this.boxStates[i!]![j!]![k!]! = BoxState.Hover;
-                    this.boxHovered = [i!, j!, k!];
-                }
-            }
-            this.onBoardStateChanged();
+            if (this.moveCount === 0)
+                this.updateHoverPositionForFirstMove();
+            else
+                this.updateHoverPosition(e.clientX, e.clientY);
+            this.onHoverStateChanged();
         };
-
         this.canvas.onmousedown = (e: MouseEvent) => {
             this.mouseDownPosition = new three.Vector2(e.clientX, e.clientY);
         }
         this.canvas.onclick = async (e) => {
-            if (this.myTurn &&
-                this.boxHovered &&
-                this.mouseDownPosition &&
-                this.mouseDownPosition.equals(new three.Vector2(e.clientX, e.clientY))) {
-                await this.api.move(new three.Vector3(
-                    this.boxHovered[0],
-                    this.boxHovered[1],
-                    this.boxHovered[2]));
-                this.myTurn = false;
-                this.waitForMyTurn();
-            }
+            const mouseDownPosition = this.mouseDownPosition;
             this.mouseDownPosition = null;
+            if (this.myTurn &&
+                this.hoverPosition &&
+                mouseDownPosition &&
+                mouseDownPosition.equals(new three.Vector2(e.clientX, e.clientY))) {
+                await this.api.move(new three.Vector3(
+                    this.hoverPosition[0],
+                    this.hoverPosition[1],
+                    this.hoverPosition[2]));
+                await this.waitForMyTurn();
+            }
         }
         this.waitForMyTurn();
     }
 
     private async waitForMyTurn() {
         while (true) {
-            // @nekomaru: here https://github.com/microsoft/TypeScript/issues/34955;
             if (await this.api.hasWon ()) { await this.onWon (); return; }
             if (await this.api.hasLost()) { await this.onLost(); return; }
-            this.moveCount = await this.api.getMoveCount();
-            this.boxStates = await this.api.getBoardState();
-            this.myTurn    = await this.api.isMyTurn();
+            this.moveCount  = await this.api.getMoveCount();
+            this.boardState = await this.api.getBoardState();
+            this.myTurn     = await this.api.isMyTurn();
             this.onBoardStateChanged();
             if (this.myTurn) break;
             await new Promise((resolve) => setTimeout(resolve, 1000));
@@ -156,16 +123,16 @@ export class Game {
 
     private async loadModels() {
         const loader = new OBJLoader();
-        const box_loaded = await loader.loadAsync("/static/models/box.obj");
-        let box_geo: three.BufferGeometry = undefined as any;
-        box_loaded.traverse(child => {
+        const boxLoaded = await loader.loadAsync("/static/models/box.obj");
+        let boxGeometry: three.BufferGeometry = undefined as any;
+        boxLoaded.traverse(child => {
             if (child instanceof three.Mesh) {
-                box_geo = child.geometry;
+                boxGeometry = child.geometry;
             }
         });
-        this.boxGeometry = box_geo;
-        this.boxGeometry.scale(0.35, 0.35, 0.35);
 
+        this.boxGeometry = boxGeometry;
+        this.boxGeometry.scale(0.35, 0.35, 0.35);
         this.boxObjects = array3D(this.boardSize, (i, j, k) => {
             const box = new three.Mesh(this.boxGeometry, this.boxMaterials[BoxState.Player]!);
             box.position.set(i, j, k);
@@ -173,50 +140,82 @@ export class Game {
             this.boardObject.add(box);
             return box;
         });
+
+        this.hoverObject = new three.Mesh(this.boxGeometry, this.hoverMaterial);
+        this.hoverObject.visible = false;
+        this.boardObject.add(this.hoverObject);
     }
 
     private onBoardStateChanged() {
-        for (let i = 0; i < this.boardSize[0]; ++ i)
-            for (let j = 0; j < this.boardSize[1]; ++ j)
-                for (let k = 0; k < this.boardSize[2]; ++ k) {
-                    const obj = this.boxObjects[i]![j]![k]!;
-                    const mat = this.boxMaterials[this.boxStates[i]![j]![k]!];
-                    if (mat) {
-                        obj.material = mat;
-                        obj.visible = true;
-                        obj.castShadow = true;
-                        obj.receiveShadow = true;
-                    }
-                    else {
-                        obj.visible = false;
-                        obj.castShadow = false;
-                        obj.receiveShadow = false;
-                    }
-                }
+        array3D(this.boardSize, (i, j, k) => [i, j, k])
+            .flat()
+            .flat()
+            .forEach(([i_, j_, k_]) => ((i: number, j: number, k: number) => {
+                const obj = this.boxObjects[i]![j]![k]!;
+                const val = this.boardState[i]![j]![k]!
+                obj.material      = this.boxMaterials[val] ?? obj.material;
+                obj.visible       = val !== BoxState.Empty;
+                obj.castShadow    = val !== BoxState.Empty;
+                obj.receiveShadow = val !== BoxState.Empty;
+            })(i_!, j_!, k_!))
+    }
+    
+    private onHoverStateChanged() {
+        if (this.hoverPosition) {
+            this.hoverObject.visible = true;
+            this.hoverObject.position.set(
+                this.hoverPosition[0],
+                this.hoverPosition[1],
+                this.hoverPosition[2]);
+        }
+        else {
+            this.hoverObject.visible = false;
+        }
     }
 
-    private getSolidNeighbors() {
-        return Array.from(array3D(this.boardSize, (i, j, k) => [i, j, k])
-        .flat().flat().filter(([ii, jj, kk]) => ((i: number, j: number, k: number): boolean => {
-            if (this.boxStates[i]![j]![k]! != BoxState.Empty)
-                return false;
-            const isSolid = (i: number, j: number, k: number) => {
-                if (this.boxStates[i]![j]![k]! === BoxState.Player) return true;
-                if (this.boxStates[i]![j]![k]! === BoxState.Opponent) return true;
-                if (this.boxStates[i]![j]![k]! === BoxState.Neutral) return true;
-                return false;
-            };
-            for (let di = -1; di <= 1; ++ di)
-                for (let dj = -1; dj <= 1; ++ dj)
-                    for (let dk = -1; dk <= 1; ++ dk)
-                        if (Math.abs(di) + Math.abs(dj) + Math.abs(dk) <= 2 &&
-                            i + di > 0 && i + di < this.boardSize[0] &&
-                            j + dj > 0 && j + dj < this.boardSize[1] &&
-                            k + dk > 0 && k + dk < this.boardSize[2] &&
-                            isSolid(i + di, j + dj, k + dk))
-                            return true;
-            return false;
-        })(ii!, jj!, kk!)));
+    private updateHoverPosition(mouseX: number, mouseY: number) {
+        this.hoverPosition = null;
+        const hoverCandidate = this.getHoverCandidates();
+        const raycaster = this.engine.getRayCaster(mouseX, mouseY);
+        const intersections = raycaster.intersectObjects(
+            hoverCandidate.map(([i, j, k]) => this.boxObjects[i!]![j!]![k!]!));
+        if (intersections.length > 0) {
+            const obj = intersections[0]!.object;
+            const [i, j, k] = hoverCandidate.find(([i, j, k]) => this.boxObjects[i!]![j!]![k!]! === obj)!;
+            this.hoverPosition = [i!, j!, k!];
+            return;
+        }
+    }
+
+    private updateHoverPositionForFirstMove() {
+        this.hoverPosition = [
+            (this.boardSize[0] - 1) / 2,
+            (this.boardSize[0] - 1) / 2,
+            (this.boardSize[0] - 1) / 2,
+        ]
+    }
+
+    private getHoverCandidates() {
+        return Array.from(
+            array3D(this.boardSize, (i, j, k) => [i, j, k])
+                .flat()
+                .flat()
+                .filter(([i, j, k]) => this.isHoverCandidate(i!, j!, k!)));
+    }
+
+    private isHoverCandidate(i: number, j: number, k: number): boolean {
+        return (
+            this.boardState[i]![j]![k]! === BoxState.Empty &&
+            array3D([3, 3, 3], (i, j, k) => [i - 1, j - 1, k - 1])
+                .flat()
+                .flat()
+                .some(([di_, dj_, dk_]) => ((di, dj, dk) =>
+                    Math.abs(di) + Math.abs(dj) + Math.abs(dk) <= 2 &&
+                    i + di > 0 && i + di < this.boardSize[0] &&
+                    j + dj > 0 && j + dj < this.boardSize[1] &&
+                    k + dk > 0 && k + dk < this.boardSize[2] &&
+                    this.boardState[i + di]![j + dj]![k + dk]! !== BoxState.Empty)(
+                    di_!, dj_!, dk_!)));
     }
 
     private palette: GamePalette = defaultPalette;
