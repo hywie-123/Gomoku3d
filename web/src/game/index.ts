@@ -1,8 +1,8 @@
 import * as three from 'three';
 import { OBJLoader } from 'three/examples/jsm/loaders/OBJLoader'
-import { ArcballControls } from 'three/examples/jsm/controls/ArcballControls'
 
 import { GameEngine } from './engine';
+import { GameApi    } from './GameApi';
 
 interface GamePalette {
     background: number,
@@ -22,6 +22,7 @@ enum BoxState {
 
 export class Game {
     private engine: GameEngine;
+    private api   : GameApi;
 
     private canvas: HTMLCanvasElement;
     private scene : three.Scene;
@@ -45,9 +46,18 @@ export class Game {
 
     private mouseDownPosition: three.Vector2 | null = null;
 
+    private onWon : () => Promise<void>;
+    private onLost: () => Promise<void>;
+
     constructor(
         canvas: HTMLCanvasElement,
-        boardSize: three.Vector3Tuple = [11, 11, 11],) {
+        boardSize: three.Vector3Tuple = [11, 11, 11],
+        onWon : () => Promise<void>,
+        onLost: () => Promise<void>,) {
+        this.api = new GameApi();
+        this.onWon  = onWon;
+        this.onLost = onLost;
+
         this.canvas = canvas;
         this.scene  = new three.Scene();
         this.engine = new GameEngine(this.canvas, this.scene);
@@ -117,17 +127,10 @@ export class Game {
                 this.boxHovered &&
                 this.mouseDownPosition &&
                 this.mouseDownPosition.equals(new three.Vector2(e.clientX, e.clientY))) {
-                await fetch('/api/v1/game/move', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                    },
-                    body: JSON.stringify({
-                        x: this.boxHovered[0],
-                        y: this.boxHovered[1],
-                        z: this.boxHovered[2],
-                    }),
-                });
+                await this.api.move(new three.Vector3(
+                    this.boxHovered[0],
+                    this.boxHovered[1],
+                    this.boxHovered[2]));
                 this.myTurn = false;
                 this.waitForMyTurn();
             }
@@ -138,17 +141,13 @@ export class Game {
 
     private async waitForMyTurn() {
         while (true) {
-            const winner = (await(await fetch('/api/v1/game/winner')).json() as any).data;
-            if (winner === 1) {
-                window.location.href = "/static/victory.html";
-            }
-            if (winner === -1) {
-                window.location.href = "/static/defeat.html";
-            }
-            this.moveCount = (await(await fetch('/api/v1/game/move-count')).json() as any).data["move_count"];
-            this.boxStates = (await(await fetch('/api/v1/game/board')).json() as any).data;
+            // @nekomaru: here https://github.com/microsoft/TypeScript/issues/34955;
+            if (await this.api.hasWon ()) { await this.onWon (); return; }
+            if (await this.api.hasLost()) { await this.onLost(); return; }
+            this.moveCount = await this.api.getMoveCount();
+            this.boxStates = await this.api.getBoardState();
+            this.myTurn    = await this.api.isMyTurn();
             this.onBoardStateChanged();
-            this.myTurn = (await(await fetch('/api/v1/game/me-next')).json() as any).data;
             if (this.myTurn) break;
             await new Promise((resolve) => setTimeout(resolve, 1000));
         }
