@@ -1,4 +1,11 @@
-import numpy as np
+# code by @rongyiming
+# optimized by @nekomaru-pku
+
+# current perf est:
+#   python: 2600ms ~ 3200ms
+#   pypy:   400ms ~ 550ms
+
+# import numpy as np
 
 near=[
     (-1,-1,0),(-1,0,-1),(0,-1,-1),
@@ -124,11 +131,12 @@ def dfs(tmpt,deepth):
 
 
 def nextstep(otable):
-    global wFile
-    wFile=open("output.txt","w")
+    # global wFile
+    # wFile=open("output.txt","w")
     global table
-    table=np.array(otable,dtype=int)
-    table.shape=(11,11,11)
+    table = otable
+    # table=np.array(otable,dtype=int)
+    # table.shape=(11,11,11)
     point=dfs(table,0)[0]
-    wFile.close()
+    # wFile.close()
     return point
