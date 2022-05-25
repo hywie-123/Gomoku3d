@@ -1,29 +1,37 @@
+import { useRef, useState } from "react";
 import * as ReactDOM from "react-dom";
-import { css } from '@emotion/react';
 
 import { CssBaseline, ThemeProvider } from "@mui/material";
 import { createTheme } from "@mui/material/styles"
+import { blue } from "@mui/material/colors";
 
-import { AppContent } from "./content";
-// import { MouseStateProvider } from "./components/MouseStateProvider";
+import { PageName } from "./pages/PageName";
+import { Home } from "./pages/Home";
 
 const theme = createTheme({
+    typography: {
+        fontFamily: 'Ubuntu, sans-serif',
+    },
     palette: {
+        primary: blue,
         background: {
-            default: "#E3F2FD",
-        }
-    }
+            default: blue[50],
+        },
+    },
 });
 
-function App() {;
+const pages: { [key in PageName]: (props: {
+    navTo: (pageName: PageName) => void,
+}) => JSX.Element } = {
+    home: Home,
+}
+
+function App() {
+    const [pageName, setPageName] = useState<PageName >('home');
+    const CurrentPage = pages[pageName];
     return <ThemeProvider theme={theme}>
         <CssBaseline />
-        {/* <MouseStateProvider> */}
-            <div css={css({
-                display: 'flex',
-                justifyContent: 'center',
-            })}><AppContent /></div>
-        {/* </MouseStateProvider> */}
+        <CurrentPage navTo={setPageName} />
     </ThemeProvider>
 }
 
