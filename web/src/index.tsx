@@ -1,22 +1,22 @@
 import { useRef, useState } from "react";
 import * as ReactDOM from "react-dom";
 
-import { CssBaseline, ThemeProvider } from "@mui/material";
+import { CssBaseline, GlobalStyles, ThemeProvider } from "@mui/material";
 import { createTheme } from "@mui/material/styles"
-import { blue } from "@mui/material/colors";
+import { blue, blueGrey } from "@mui/material/colors";
 
 import { PageName } from "./pages/PageName";
 import { Home } from "./pages/Home";
 
 const theme = createTheme({
-    typography: {
-        fontFamily: 'Ubuntu, sans-serif',
-    },
     palette: {
         primary: blue,
-        background: {
-            default: blue[50],
-        },
+    },
+    typography: {
+        fontFamily: 'Ubuntu, sans-serif',
+        body1: {
+            color: blueGrey[700],
+        }
     },
 });
 
