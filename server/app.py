@@ -15,9 +15,6 @@ rooms = {}
 @app.route("/", methods=["GET"])
 def index():
     return flask.send_from_directory("../web/public", "index.html")
-@app.route("/play", methods=["GET"])
-def play():
-    return flask.send_from_directory("../web/public", "play.html")
 
 @app.route("/api/v1/login", methods=["POST"])
 def login():
