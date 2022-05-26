@@ -8,6 +8,12 @@ import { blueGrey } from "@mui/material/colors";
 import { PageName } from "./PageName"
 import { MyButton, MyLargeButton } from "../components/MyButton";
 
+const LoginButton = styled(MyButton)({
+    display: 'block',
+    margin: "8px 0",
+    width: '100%',
+});
+
 const PlayButton = styled(MyLargeButton)({
     display: 'block',
     margin: "8px 0",
@@ -18,13 +24,12 @@ export function Home(props: {
 }) {
     const theme = useTheme();
     const [hasLogin, setHasLogin] = useState(false);
-    return <Container maxWidth="sm" css={css({
-        paddingTop: 96,
-        display: 'flex',
-        flexDirection: 'column',
+    return <Container maxWidth="xs" css={css({
+        padding: "96px 0",
     })}>
         <Typography variant='h1' color='primary' css={css({
-            fontSize: "calc(min(5rem, 16vw))"
+            fontSize: "4.5rem",
+            textAlign: 'center',
         })}>Gomoku3D</Typography>
         <Grid container css={css({
             marginBottom: 8,
@@ -43,13 +48,8 @@ export function Home(props: {
                 <TextField variant='standard'                 fullWidth placeholder="User Name" />
                 <TextField variant='standard' type='password' fullWidth placeholder="Password" />
                 <div css={css({ marginTop: 8 })}>
-                    <MyButton variant="outlined">Login</MyButton>
-                    <span css={css({
-                        height: 28,
-                        marginLeft: 8,
-                        verticalAlign: 'baseline',
-                    })}>or</span>
-                    <MyButton variant="text">Create Account</MyButton>
+                    <LoginButton variant="outlined">Login</LoginButton>
+                    <LoginButton variant="text">Create Account</LoginButton>
                 </div>
             </Grid>
             <Grid item xs={12} md={6} css={css({
