@@ -1,6 +1,7 @@
 from flask import *
 
 from server.models.users import DbUser
+from server.api.v2.games import get_game_for_user
 
 app = Blueprint("api_v2_users", __name__)
 
@@ -15,6 +16,7 @@ def login_get():
             "status": "success",
             "data": {
                 "username": user.username,
+                "gameid": get_game_for_user(user.username),
             },
         }
     else:

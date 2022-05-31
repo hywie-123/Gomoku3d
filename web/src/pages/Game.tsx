@@ -2,31 +2,25 @@ import { Fragment, useEffect, useState } from "react";
 import { css } from "@emotion/react"
 import styled from "@emotion/styled";
 
-import { PageName } from "./PageName";
+import { PageProps } from "./PageProps";
 import { Game as GameCore } from "../game";
 
-export function Game(props: {
-    navTo: (pageName: PageName) => void,
-}) {
+export function Game(props: PageProps) {
     useEffect(() => {
         const canvas = document.getElementById("game") as HTMLCanvasElement;
         const game = new GameCore(
             canvas,
-            [11, 11, 11],
-            async () => {
-                window.location.href = "/static/victory.html";
-                return undefined as any as never;
-            },
-            async () => {
-                window.location.href = "/static/defeat.html";
-                return undefined as any as never;
-            });
+            props.userName,
+            props.gameId,
+            () => props.setPageName('gameResult'),
+            () => props.setPageName('gameResult'));
         game.start();
 
         window.addEventListener("resize", () => game.resize(canvas.width, canvas.height));
-    }, []);
+    });
     return <Fragment>
         <canvas id="game" css={css({
+            position: "absolute",
             width : "100%",
             height: "100%",
         })}></canvas>

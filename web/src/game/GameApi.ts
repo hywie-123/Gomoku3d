@@ -5,13 +5,12 @@ export class GameApi {
     private gameData: any;
     private userName: string = '';
 
+    public constructor(userName: string, gameId: string) {
+        this.userName = userName;
+        this.gameId   = gameId;
+    }
+
     public async update(): Promise<void> {
-        if (! this.userName) {
-            this.userName = (await(await fetch('/api/v2/login')).json() as any).data["username"];
-        }
-        if (! this.gameId) {
-            this.gameId = (await(await fetch('/api/v2/join')).json() as any).data["game_id"];
-        }
         this.gameData = (await(await fetch(`/api/v2/games/${this.gameId}`)).json() as any).data;
     }
 
@@ -32,7 +31,7 @@ export class GameApi {
     }
 
     public async move(pos: Vector3) {
-        await fetch(`/api/v2/games/${this.gameId}`, {
+        await fetch(`/api/v2/games/${this.gameId}/move`, {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',

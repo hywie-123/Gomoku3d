@@ -33,15 +33,16 @@ export class Game {
 
     private mouseDownPosition: three.Vector2 | null = null;
 
-    private onWon : () => Promise<void>;
-    private onLost: () => Promise<void>;
+    private onWon : () => void;
+    private onLost: () => void;
 
     constructor(
         canvas: HTMLCanvasElement,
-        boardSize: three.Vector3Tuple = [11, 11, 11],
-        onWon : () => Promise<void>,
-        onLost: () => Promise<void>,) {
-        this.api = new GameApi();
+        userName: string,
+        gameId: string,
+        onWon : () => void,
+        onLost: () => void,) {
+        this.api = new GameApi(userName, gameId);
         this.onWon  = onWon;
         this.onLost = onLost;
 
@@ -52,7 +53,7 @@ export class Game {
             new three.Vector3(0, 0, 10),
             new three.Vector3(0, 0,  0));
 
-        this.boardSize  = boardSize;
+        this.boardSize  = [11, 11, 11];
         this.boardState = array3D(this.boardSize, () => BoxState.Empty);
         this.boardObject = new three.Object3D();
         this.boardObject.position.set(

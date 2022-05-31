@@ -5,18 +5,19 @@ import styled from "@emotion/styled";
 import { LinearProgress, Container, Grid, Backdrop, Typography, useTheme, Paper } from "@mui/material"
 import { blueGrey } from "@mui/material/colors";
 
-import { PageName } from "./PageName"
+import { PageProps } from "./PageProps"
 import { MyButton, MyLargeButton } from "../components/MyButton";
 import { HomeLogin } from "./HomeLogin";
 import { HomeUserProfile } from "./HomeUserProfile";
 
-async function waitForGame(): Promise<void> {
+async function waitForGame(): Promise<string> {
     const res = await fetch('/api/v2/join');
     const resJson = await res.json();
     if (resJson.status === 'waiting') {
         await new Promise(resolve => setTimeout(resolve, 1000));
-        await waitForGame();
+        return await waitForGame();
     }
+    return resJson.data["game_id"];
 }
 
 const PlayButton = styled(MyLargeButton)({
@@ -24,19 +25,21 @@ const PlayButton = styled(MyLargeButton)({
     margin: "8px 0",
 })
 
-export function Home(props: {
-    navTo: (pageName: PageName) => void,
-}) {
+export function Home(props: PageProps) {
     const theme = useTheme();
     const [loading , setLoading ] = useState(false);
-    const [userName, setUserName] = useState("");
 
     useEffect(() => {
         fetch('/api/v2/login').then(
             async res => {
                 const resJsonData = (await res.json()).data;
-                if (resJsonData)
-                    setUserName(resJsonData.username);
+                if (resJsonData) {
+                    props.setUserName(resJsonData.username);
+                    if (resJsonData.gameid) {
+                        props.setPageName('game');
+                        props.setGameId  (resJsonData.gameid);
+                    }
+                }
             })
     }, []);
 
@@ -59,10 +62,10 @@ export function Home(props: {
                     paddingBottom: 8,
                     borderBottom: `1px solid ${blueGrey[200]}`,
                 },
-            })}>{ userName ?
-                <HomeUserProfile username={userName} onLogout={() => {
+            })}>{ props.userName ?
+                <HomeUserProfile username={props.userName} onLogout={() => {
                     fetch('/api/v2/login', { method: 'DELETE' });
-                    setUserName("");
+                    props.setUserName("");
                 }}/>:
                 <HomeLogin onLogin={(username, password, errorCallback) => {
                     const reqBody = new FormData();
@@ -71,7 +74,7 @@ export function Home(props: {
                     fetch('/api/v2/login', { method: 'POST', body: reqBody }).then(async res => {
                         const resJson = await res.json();
                         if (resJson.status === 'success')
-                            setUserName(resJson.data.username);
+                            props.setUserName(resJson.data.username);
                         else
                             errorCallback(resJson.message);
                     });
@@ -83,20 +86,22 @@ export function Home(props: {
                 },
             })}>
                 <PlayButton
-                    variant="outlined" color="primary" disabled={!userName}
+                    variant="outlined" color="primary" disabled={!props.userName}
                     onClick={async () => {
                         setLoading(true);
-                        await waitForGame();
-                        props.navTo('game');
+                        const gameId = await waitForGame();
+                        props.setPageName('game');
+                        props.setGameId(gameId);
                     }}>
                     Quick Game</PlayButton>
                 {/* <PlayButton variant="outlined" color="primary" disabled={!userName}>
                     Select Room</PlayButton> */}
                 <PlayButton
-                    variant="outlined" color="primary" disabled={!userName}
+                    variant="outlined" color="primary" disabled={!props.userName}
                     onClick={async () => {
-                        await fetch("/api/v2/join-vs-ai");
-                        props.navTo('game');
+                        const gameId = (await(await fetch("/api/v2/join-vs-ai")).json()).data["game_id"];
+                        props.setPageName('game');
+                        props.setGameId(gameId);
                     }}>
                     Player vs. Computer
                 </PlayButton>
