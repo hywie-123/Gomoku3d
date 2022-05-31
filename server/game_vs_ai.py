@@ -32,9 +32,9 @@ class GameVsAI(Game):
             lambda d2: list(map(
                 lambda d1: list(map(
                     lambda d0:
-                        1 if d0 == self.ai_username else
+                        -1 if d0 == self.ai_username else
                         0 if d0 == '' else
-                        -1,
+                        1,
                     d1)),
                 d2)),
             self._board))
