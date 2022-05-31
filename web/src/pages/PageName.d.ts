@@ -1,1 +1,1 @@
-export type PageName = 'home';
+export type PageName = 'home' | 'game';

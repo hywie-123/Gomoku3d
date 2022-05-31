@@ -209,6 +209,10 @@ export class Game {
                     this.boardState[i + di]![j + dj]![k + dk]! !== BoxState.Empty)(
                     di_!, dj_!, dk_!)));
     }
+
+    public resize(width: number, height: number) {
+        this.renderer.resize(width, height);
+    }
 }
 
 function array3D<T>(

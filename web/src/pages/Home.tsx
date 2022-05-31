@@ -13,11 +13,9 @@ import { HomeUserProfile } from "./HomeUserProfile";
 async function waitForGame(): Promise<void> {
     const res = await fetch('/api/v2/join');
     const resJson = await res.json();
-    if (resJson.status === 'success')
-        window.location.href = `/static/play.html`
     if (resJson.status === 'waiting') {
         await new Promise(resolve => setTimeout(resolve, 1000));
-        return waitForGame();
+        await waitForGame();
     }
 }
 
@@ -88,7 +86,8 @@ export function Home(props: {
                     variant="outlined" color="primary" disabled={!userName}
                     onClick={async () => {
                         setLoading(true);
-                        waitForGame();
+                        await waitForGame();
+                        props.navTo('game');
                     }}>
                     Quick Game</PlayButton>
                 {/* <PlayButton variant="outlined" color="primary" disabled={!userName}>
@@ -97,7 +96,7 @@ export function Home(props: {
                     variant="outlined" color="primary" disabled={!userName}
                     onClick={async () => {
                         await fetch("/api/v2/join-vs-ai");
-                        window.location.href = `/static/play.html`
+                        props.navTo('game');
                     }}>
                     Player vs. Computer
                 </PlayButton>

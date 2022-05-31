@@ -7,6 +7,7 @@ import { blue, blueGrey } from "@mui/material/colors";
 
 import { PageName } from "./pages/PageName";
 import { Home } from "./pages/Home";
+import { Game } from "./pages/Game";
 
 const theme = createTheme({
     palette: {
@@ -24,6 +25,7 @@ const pages: { [key in PageName]: (props: {
     navTo: (pageName: PageName) => void,
 }) => JSX.Element } = {
     home: Home,
+    game: Game,
 }
 
 function App() {

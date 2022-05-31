@@ -12,7 +12,7 @@ export class GameRenderer {
         this.renderer = new three.WebGLRenderer({ canvas, antialias: true });
         this.renderer.shadowMap.enabled = true;
         this.renderer.setSize(window.innerWidth, window.innerHeight);
-        this.renderer.setClearColor(0xE1F5FE);
+        this.renderer.setClearColor(0xffffff);
         this.renderer.setAnimationLoop(() => {
             this.renderer.render(this.scene, this.camera);
         })
@@ -68,5 +68,11 @@ export class GameRenderer {
             + (clientX / window.innerWidth ) * 2 - 1,
             - (clientY / window.innerHeight) * 2 + 1), this.camera);
         return raycaster;
+    }
+
+    public resize(width: number, height: number) {
+        this.renderer.setSize(width, height);
+        this.camera.aspect = width / height;
+        this.camera.updateProjectionMatrix();
     }
 }

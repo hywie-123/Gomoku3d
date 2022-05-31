@@ -4,7 +4,6 @@ module.exports = {
     mode: 'development',
     entry: {
         index: path.resolve(__dirname, 'src/index.tsx'),
-        play: path.resolve(__dirname, 'src/play.ts'),
     },
     devtool: 'inline-source-map',
     output: {
