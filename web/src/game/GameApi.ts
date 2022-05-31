@@ -1,28 +1,38 @@
 import { Vector3 } from "three";
 
 export class GameApi {
+    private gameId: string = '';
+    private gameData: any;
+    private userName: string = '';
+
+    public async update(): Promise<void> {
+        if (! this.userName) {
+            this.userName = (await(await fetch('/api/v2/login')).json() as any).data["username"];
+        }
+        if (! this.gameId) {
+            this.gameId = (await(await fetch('/api/v2/join')).json() as any).data["game_id"];
+        }
+        this.gameData = (await(await fetch(`/api/v2/games/${this.gameId}`)).json() as any).data;
+    }
+
     public async hasWon() {
-        return (await(await fetch('/api/v1/game/winner')).json() as any).data === 1;
+        return this.gameData.winner === this.userName;
     }
 
     public async hasLost() {
-        return (await(await fetch('/api/v1/game/winner')).json() as any).data === -1;
+        return this.gameData.winner !== this.userName && this.gameData.winner !== '';
     }
 
     public async isMyTurn() {
-        return (await(await fetch('/api/v1/game/me-next')).json() as any).data;
-    }
-
-    public async getMoveCount() {
-        return (await(await fetch('/api/v1/game/move-count')).json() as any).data["move_count"];
+        return this.gameData.next === this.userName;
     }
 
     public async getBoardState() {
-        return (await(await fetch('/api/v1/game/board')).json() as any).data;
+        return this.gameData.board;
     }
 
     public async move(pos: Vector3) {
-        await fetch('/api/v1/game/move', {
+        await fetch(`/api/v2/games/${this.gameId}`, {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',

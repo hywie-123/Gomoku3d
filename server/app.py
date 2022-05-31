@@ -12,7 +12,5 @@ app.secret_key = 'secret'
 def index():
     return send_from_directory(app.static_folder, "index.html")
 
-from server.api.v1 import app as api_v1;
 from server.api.v2 import app as api_v2;
-app.register_blueprint(api_v1)
 app.register_blueprint(api_v2)

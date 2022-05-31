@@ -6,15 +6,14 @@ app = Blueprint("api_v2_users", __name__)
 
 @app.route("login", methods=["GET"])
 def login_get():
-    if session.get("uid"):
-        user = DbUser.select().where(DbUser.uid == session["uid"])
+    if session.get("username"):
+        user = DbUser.select().where(DbUser.username == session["username"])
         if user.count() == 0:
             return login_delete()
         user = user.get()
         return {
             "status": "success",
             "data": {
-                "uid": session["uid"],
                 "username": user.username,
             },
         }
@@ -47,11 +46,10 @@ def login():
             "status": "error",
             "message": "Invalid username or password."
         }
-    session["uid"] = user.uid
+    session["username"] = user.username
     return {
         "status": "success",
         "data": {
-            "uid": user.uid,
             "username": user.username,
         },
     }
@@ -75,7 +73,6 @@ def users(username: str):
     return {
         "status": "success",
         "data": {
-            "uid": user.uid,
             "username": user.username,
             "nickname": user.nickname,
         }
@@ -84,8 +81,8 @@ def users(username: str):
 @app.route("users", methods=["POST"])
 def users_post():
     username = request.form.get("username")
-    password = request.form.get("password")
     nickname = request.form.get("nickname")
+    password = request.form.get("password")
     if not username:
         return {
             "status": "error",

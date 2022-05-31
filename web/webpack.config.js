@@ -2,11 +2,14 @@ const path = require('path');
 
 module.exports = {
     mode: 'development',
-    entry: path.resolve(__dirname, 'src/index.tsx'),
+    entry: {
+        index: path.resolve(__dirname, 'src/index.tsx'),
+        play: path.resolve(__dirname, 'src/play.ts'),
+    },
     devtool: 'inline-source-map',
     output: {
         path: path.resolve(__dirname, 'public'),
-        filename: 'index.bundle.js'
+        filename: '[name].bundle.js'
     },
     module: {
         rules: [

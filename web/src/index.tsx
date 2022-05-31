@@ -1,7 +1,7 @@
-import { useRef, useState } from "react";
+import { useState } from "react";
 import * as ReactDOM from "react-dom";
 
-import { CssBaseline, GlobalStyles, ThemeProvider } from "@mui/material";
+import { CssBaseline, ThemeProvider } from "@mui/material";
 import { createTheme } from "@mui/material/styles"
 import { blue, blueGrey } from "@mui/material/colors";
 

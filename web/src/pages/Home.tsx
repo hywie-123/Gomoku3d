@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { css } from "@emotion/react"
 import styled from "@emotion/styled";
 
-import { Container, Grid, InputLabelClasses, TextField, Typography, useTheme } from "@mui/material"
+import { LinearProgress, Container, Grid, Backdrop, Typography, useTheme, Paper } from "@mui/material"
 import { blueGrey } from "@mui/material/colors";
 
 import { PageName } from "./PageName"
@@ -10,7 +10,16 @@ import { MyButton, MyLargeButton } from "../components/MyButton";
 import { HomeLogin } from "./HomeLogin";
 import { HomeUserProfile } from "./HomeUserProfile";
 
-
+async function waitForGame(): Promise<void> {
+    const res = await fetch('/api/v2/join');
+    const resJson = await res.json();
+    if (resJson.status === 'success')
+        window.location.href = `/static/play.html`
+    if (resJson.status === 'waiting') {
+        await new Promise(resolve => setTimeout(resolve, 1000));
+        return waitForGame();
+    }
+}
 
 const PlayButton = styled(MyLargeButton)({
     display: 'block',
@@ -21,6 +30,7 @@ export function Home(props: {
     navTo: (pageName: PageName) => void,
 }) {
     const theme = useTheme();
+    const [loading , setLoading ] = useState(false);
     const [userName, setUserName] = useState("");
 
     useEffect(() => {
@@ -74,17 +84,30 @@ export function Home(props: {
                     paddingLeft: 12,
                 },
             })}>
-                <PlayButton variant="outlined" color="primary" disabled={!userName}>
+                <PlayButton
+                    variant="outlined" color="primary" disabled={!userName}
+                    onClick={async () => {
+                        setLoading(true);
+                        waitForGame();
+                    }}>
                     Quick Game</PlayButton>
-                <PlayButton variant="outlined" color="primary" disabled={!userName}>
-                    Select Room</PlayButton>
-                <PlayButton variant="outlined" color="primary" disabled={!userName}>
-                    Player vs. Computer</PlayButton>
+                {/* <PlayButton variant="outlined" color="primary" disabled={!userName}>
+                    Select Room</PlayButton> */}
+                {/* <PlayButton variant="outlined" color="primary" disabled={!userName}>
+                    Player vs. Computer</PlayButton> */}
             </Grid>
         </Grid>
         <Typography css={css({ textAlign: 'center' })}>
             Open source under GPLv3 on&nbsp;
             <a href="https://github.com/PKU-Nekomaru/">GitHub</a>
         </Typography>
+        <Backdrop open={loading}>
+            <LinearProgress  css={css({
+                position: 'absolute',
+                top: 0,
+                width: "100%",
+                height: 8,
+            })}/>
+        </Backdrop>
     </Container>
 }
