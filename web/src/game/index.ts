@@ -63,14 +63,14 @@ export class Game {
     }
 
     private myTurn: boolean = false;
-    private moveCount: number = 0;
+    private isFirstMove: boolean = false;
 
     public async start() {
         await this.loadModels();
 
         this.canvas.onmousemove = async (e: MouseEvent) => {
             if (! this.myTurn) return;
-            if (this.moveCount === 0)
+            if (this.isFirstMove)
                 this.updateHoverPositionForFirstMove();
             else
                 this.updateHoverPosition(e.clientX, e.clientY);
@@ -98,11 +98,13 @@ export class Game {
 
     private async waitForMyTurn() {
         while (true) {
+            await this.api.update();
             if (await this.api.hasWon ()) { await this.onWon (); return; }
             if (await this.api.hasLost()) { await this.onLost(); return; }
-            this.moveCount  = await this.api.getMoveCount();
             this.boardState = await this.api.getBoardState();
             this.myTurn     = await this.api.isMyTurn();
+            this.isFirstMove = ! this.boardState.some(
+                o => o.some(o => o.some(o => o !== BoxState.Empty)));
             this.onBoardStateChanged();
             if (this.myTurn) break;
             await new Promise((resolve) => setTimeout(resolve, 1000));
