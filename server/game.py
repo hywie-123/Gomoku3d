@@ -14,7 +14,7 @@ class Game:
         self.next   : str = player0
         self.winner : str = ''
 
-        self.__board        : List[List[List[str]]]    = list(map(
+        self._board : List[List[List[str]]] = list(map(
             lambda _: list(map(
                 lambda _: list(map(
                     lambda _: '',
@@ -32,7 +32,7 @@ class Game:
                         GET_BOARD_OPPONENT,
                     d1)),
                 d2)),
-            self.__board))
+            self._board))
     
     def move(self, username: str, position: Tuple[int, int, int]):
         if self.winner != '':
@@ -45,15 +45,15 @@ class Game:
             raise Exception("Position out of range!")
         if position[2] < 0 or position[2] >= BOARD_SIZE[2]:
             raise Exception("Position out of range!")
-        if self.__board[position[0]][position[1]][position[2]] != '':
+        if self._board[position[0]][position[1]][position[2]] != '':
             raise Exception("Position is not empty!")
-        self.__board[position[0]][position[1]][position[2]] = username
+        self._board[position[0]][position[1]][position[2]] = username
         self.next = self.player0 if username == self.player1 else self.player1
         for x in range(BOARD_SIZE[0]):
             for y in range(BOARD_SIZE[1]):
                 cnt = 0
                 for z in range(BOARD_SIZE[2]):
-                    if self.__board[x][y][z] == username:
+                    if self._board[x][y][z] == username:
                         cnt += 1
                     else:
                         cnt = 0
@@ -64,7 +64,7 @@ class Game:
             for z in range(BOARD_SIZE[2]):
                 cnt = 0
                 for x in range(BOARD_SIZE[0]):
-                    if self.__board[x][y][z] == username:
+                    if self._board[x][y][z] == username:
                         cnt += 1
                     else:
                         cnt = 0
@@ -75,7 +75,7 @@ class Game:
             for x in range(BOARD_SIZE[0]):
                 cnt = 0
                 for y in range(BOARD_SIZE[1]):
-                    if self.__board[x][y][z] == username:
+                    if self._board[x][y][z] == username:
                         cnt += 1
                     else:
                         cnt = 0

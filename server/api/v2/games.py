@@ -1,7 +1,8 @@
 from uuid  import *
 from flask import *
 
-from server.game import Game
+from server.game       import Game
+from server.game_vs_ai import GameVsAI
 
 global wait, games
 games = {}
@@ -10,7 +11,7 @@ wait = ''
 app = Blueprint("api_v2_game", __name__)
 
 @app.route("join", methods=["GET"])
-def join_poll():
+def join():
     if not session.get("username"):
         return { "status": "error", "message": "Not logged in." }
     for game_id, game in games.items():
@@ -31,6 +32,24 @@ def join_poll():
     game_id = str(uuid1())
     games[game_id] = Game(session.get("username"), wait)
     wait = ''
+    return {
+        "status": "success",
+        "data": {
+            "game_id": str(game_id)
+        }
+    }
+
+@app.route("join-vs-ai", methods=["GET"])
+def join_vs_ai():
+    if not session.get("username"):
+        return { "status": "error", "message": "Not logged in." }
+    for game_id, game in games.items():
+        if game.winner == '':
+            if  game.player0 == session["username"] or \
+                game.player1 == session["username"]:
+                return { "status": "error", "message": "Already in another game" }
+    game_id = str(uuid1())
+    games[game_id] = GameVsAI(session.get("username"))
     return {
         "status": "success",
         "data": {

@@ -93,8 +93,14 @@ export function Home(props: {
                     Quick Game</PlayButton>
                 {/* <PlayButton variant="outlined" color="primary" disabled={!userName}>
                     Select Room</PlayButton> */}
-                {/* <PlayButton variant="outlined" color="primary" disabled={!userName}>
-                    Player vs. Computer</PlayButton> */}
+                <PlayButton
+                    variant="outlined" color="primary" disabled={!userName}
+                    onClick={async () => {
+                        await fetch("/api/v2/join-vs-ai");
+                        window.location.href = `/static/play.html`
+                    }}>
+                    Player vs. Computer
+                </PlayButton>
             </Grid>
         </Grid>
         <Typography css={css({ textAlign: 'center' })}>
