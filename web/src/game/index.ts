@@ -70,6 +70,7 @@ export class Game {
 
         this.canvas.onmousemove = async (e: MouseEvent) => {
             if (! this.myTurn) return;
+            if (this.mouseDownPosition) return;
             if (this.isFirstMove)
                 this.updateHoverPositionForFirstMove();
             else
