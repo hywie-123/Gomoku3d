@@ -14,9 +14,10 @@ export function Game(props: PageProps) {
             props.gameId,
             () => props.setPageName('gameResult'),
             () => props.setPageName('gameResult'));
-        game.start();
+        game.run();
 
-        window.addEventListener("resize", () => game.resize(canvas.width, canvas.height));
+        window.addEventListener("resize", () =>
+            game.resize(window.innerWidth, window.innerHeight));
     });
     return <Fragment>
         <canvas id="game" css={css({

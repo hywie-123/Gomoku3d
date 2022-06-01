@@ -1,31 +1,43 @@
-import * as three from 'three';
+import {
+    Vector2,
+    Vector3,
+    Scene,
+    AmbientLight,
+    DirectionalLight,
+    PerspectiveCamera,
+    Raycaster,
+    WebGLRenderer,
+} from 'three';
 import { ArcballControls } from 'three/examples/jsm/controls/ArcballControls'
 
 export class GameRenderer {
-    private camera  : three.PerspectiveCamera;
+    private camera  : PerspectiveCamera;
     private controls: ArcballControls;
     
-    public readonly renderer: three.WebGLRenderer;
-    public readonly scene   : three.Scene;
+    public readonly renderer: WebGLRenderer;
+    public readonly scene   : Scene;
 
-    constructor(canvas: HTMLCanvasElement, scene: three.Scene) {
-        this.renderer = new three.WebGLRenderer({ canvas, antialias: true });
+    public onBeforeRender: () => void = () => {};
+
+    constructor(canvas: HTMLCanvasElement, scene: Scene) {
+        this.renderer = new WebGLRenderer({ canvas, antialias: true });
         this.renderer.shadowMap.enabled = true;
         this.renderer.setSize(window.innerWidth, window.innerHeight);
         this.renderer.setClearColor(0xffffff);
         this.renderer.setAnimationLoop(() => {
+            this.onBeforeRender();
             this.renderer.render(this.scene, this.camera);
         })
 
         this.scene = scene;
 
-        this.camera = new three.PerspectiveCamera(
+        this.camera = new PerspectiveCamera(
             60, window.innerWidth / window.innerHeight, 0.1, 30);
 
-        const ambient_light = new three.AmbientLight(0xffffff, 0.9);
+        const ambient_light = new AmbientLight(0xffffff, 0.9);
         this.scene.add(ambient_light);
 
-        const main_light = new three.DirectionalLight(0xffffff, 0.3);
+        const main_light = new DirectionalLight(0xffffff, 0.3);
         main_light.position.set(1, 2, 3);
         main_light.lookAt(0, 0, 0);
         main_light.castShadow = true;
@@ -40,7 +52,7 @@ export class GameRenderer {
         main_light.shadow.camera.far = 10;
         this.scene.add(main_light);
 
-        const fill_light = new three.DirectionalLight(0xffffff, 0.1);
+        const fill_light = new DirectionalLight(0xffffff, 0.1);
         fill_light.position.set(-1, -2, -3);
         fill_light.lookAt(0, 0, 0);
         this.scene.add(fill_light);
@@ -56,15 +68,15 @@ export class GameRenderer {
             'change', () => this.renderer.render(this.scene, this.camera));
     }
 
-    public setCamera(position: three.Vector3, lookAt: three.Vector3) {
+    public setCamera(position: Vector3, lookAt: Vector3) {
         this.camera.position.copy(position);
         this.camera.lookAt(lookAt);
         this.controls.update();
     }
 
     public getRayCaster(clientX: number, clientY: number) {
-        const raycaster = new three.Raycaster();
-        raycaster.setFromCamera(new three.Vector2(
+        const raycaster = new Raycaster();
+        raycaster.setFromCamera(new Vector2(
             + (clientX / window.innerWidth ) * 2 - 1,
             - (clientY / window.innerHeight) * 2 + 1), this.camera);
         return raycaster;

@@ -1,49 +1,70 @@
-import * as three from 'three';
+import {
+    Vector2,
+    Vector3,
+    Vector3Tuple,
+    Scene,
+    Object3D,
+    Mesh,
+    BufferGeometry,
+    SphereBufferGeometry,
+    Material,
+    MeshBasicMaterial,
+    MeshStandardMaterial,
+} from 'three';
 import { OBJLoader } from 'three/examples/jsm/loaders/OBJLoader'
 
-import { GameRenderer } from './GameRenderer';
-import { GameApi      } from './GameApi';
+import { GameRenderer   } from './GameRenderer';
+import { GameApi        } from './GameApi';
+import { ValueAnimator  } from './ValueAnimator';
+import { HoverIndicator } from './GameHoverIndicator';
+import {
+    kBoardSize,
+    kBoxScale,
+    kAnimationFrameTime,
+    kAnimationSpeed,
+    kEaseFunction,
+    kHoverDetectionRadius,
+    kHoverIndicatorColor,
+    kHoverIndicatorBallRadius,
+} from './GameConstants';
 
 enum BoxState { Empty, Player, Opponent, }
-
-const kBoxScale = 0.35;
-const kHoverDetectionRadius = 0.2;
-const kHoverIndicationRadius = 0.1;
 
 export class Game {
     private renderer: GameRenderer;
     private api     : GameApi;
 
     private canvas: HTMLCanvasElement;
-    private scene : three.Scene;
+    private scene : Scene;
 
-    private boardSize  : three.Vector3Tuple;
     private boardState : BoxState[][][];
-    private boardObject: three.Object3D;
+    private boardObject: Object3D;
     
-    private boxObjects  : three.Mesh[][][]     = undefined as any;
-    private boxGeometry : three.BufferGeometry = undefined as any;
-    private boxMaterials: { [key in BoxState]: three.Material | null } = {
+    private boxes       : Mesh[][][]     = undefined as any;
+    private boxGeometry : BufferGeometry = undefined as any;
+    private boxMaterials: { [key in BoxState]: Material | null } = {
         [BoxState.Empty     ]: null,
-        [BoxState.Player    ]: new three.MeshStandardMaterial({ color: 0x81D4FA }),
-        [BoxState.Opponent  ]: new three.MeshStandardMaterial({ color: 0xF06292 }),
+        [BoxState.Player    ]: new MeshStandardMaterial({ color: 0x81D4FA }),
+        [BoxState.Opponent  ]: new MeshStandardMaterial({ color: 0xF06292 }),
     };
+    private boxAnimators: ValueAnimator[][][] = undefined as any;
 
-    private hoverPosition: three.Vector3Tuple | null = null;
-    private hoverObject  : three.Mesh = undefined as any;
-    private hoverMaterial: three.Material = new three.MeshBasicMaterial({
-        color: 0x81D4FA,
-        wireframe: true, });
+    private hoverCandidateIndicatorGeometry = new SphereBufferGeometry(kHoverIndicatorBallRadius, 8, 8);
+    private hoverCandidateIndicatorMaterial = new MeshBasicMaterial({ color: kHoverIndicatorColor });
+    private hoverCandidateIndicators        : Mesh         [][][] = undefined as any;
+    private hoverCandidateIndicatorAnimators: ValueAnimator[][][] = undefined as any;
 
-    private hoverDetectionObjects: three.Mesh[][][] = undefined as any;
-    private hoverDetectionGeometry: three.BufferGeometry = new three.SphereGeometry(kHoverDetectionRadius);
-    private hoverDetectionMaterial: three.Material = new three.MeshBasicMaterial({ color: 0xF06292 });//new three.MeshBasicMaterial();
 
-    private hoverIndicationObjects: three.Mesh[][][] = undefined as any;
-    private hoverIndicationGeometry: three.BufferGeometry = new three.SphereGeometry(kHoverIndicationRadius);
-    private hoverIndicationMaterial: three.Material = new three.MeshBasicMaterial({ color: 0xE1F5FE });
+    private hoverPosition     : Vector3Tuple | null = null;
+    private prevHoverPosition : Vector3Tuple | null = null;
+    private hoverIndicator    : HoverIndicator = undefined as any;
+    private prevHoverIndicator: HoverIndicator = undefined as any;
 
-    private mouseDownPosition: three.Vector2 | null = null;
+    private hoverProbes: Mesh[][][] = undefined as any;
+    private hoverProbeGeometry = new SphereBufferGeometry(kHoverDetectionRadius, 8, 8);
+    private hoverProbeMaterial = new MeshBasicMaterial();
+
+    private mouseDownPosition: Vector2 | null = null;
 
     private onWon : () => void;
     private onLost: () => void;
@@ -59,71 +80,120 @@ export class Game {
         this.onLost = onLost;
 
         this.canvas = canvas;
-        this.scene  = new three.Scene();
+        this.scene  = new Scene();
         this.renderer = new GameRenderer(this.canvas, this.scene);
         this.renderer.setCamera(
-            new three.Vector3(0, 0, 10),
-            new three.Vector3(0, 0,  0));
+            new Vector3(0, 0, 10),
+            new Vector3(0, 0,  0));
 
-        this.boardSize  = [11, 11, 11];
-        this.boardState = array3D(this.boardSize, () => BoxState.Empty);
-        this.boardObject = new three.Object3D();
+        this.boardState = array3D(kBoardSize, () => BoxState.Empty);
+        this.boardObject = new Object3D();
         this.boardObject.position.set(
-            - (this.boardSize[0] - 1) / 2,
-            - (this.boardSize[1] - 1) / 2,
-            - (this.boardSize[2] - 1) / 2);
+            - (kBoardSize[0] - 1) / 2,
+            - (kBoardSize[1] - 1) / 2,
+            - (kBoardSize[2] - 1) / 2);
         this.scene.add(this.boardObject);
 
-        this.hoverDetectionObjects = array3D(this.boardSize, (i, j, k) => {
-            const box = new three.Mesh(this.hoverDetectionGeometry, this.hoverDetectionMaterial);
+        this.boxAnimators = array3D(kBoardSize, (i, j, k) => {
+            const animator = new ValueAnimator();
+            const getBox = () => this.boxes[i!]![j!]![k!]!;
+            animator.speed = kAnimationSpeed;
+            animator.easeFunction            = kEaseFunction;
+            animator.setValueCallback        = value => getBox().scale.set(value, value, value);
+            animator.getValueCallback        = ()    => getBox().scale.x;
+            animator.setZeroValueCallback    = () => getBox().visible = false;
+            animator.setNonZeroValueCallback = () => getBox().visible = true;
+            return animator;
+        });
+
+        this.hoverProbes = array3D(kBoardSize, (i, j, k) => {
+            const box = new Mesh(this.hoverProbeGeometry, this.hoverProbeMaterial);
             box.position.set(i, j, k);
             box.visible = false;
             this.boardObject.add(box);
             return box;
         });
 
-        this.hoverIndicationObjects = array3D(this.boardSize, (i, j, k) => {
-            const box = new three.Mesh(this.hoverIndicationGeometry, this.hoverIndicationMaterial);
+        this.hoverCandidateIndicators = array3D(kBoardSize, (i, j, k) => {
+            const box = new Mesh(
+                this.hoverCandidateIndicatorGeometry,
+                this.hoverCandidateIndicatorMaterial);
             box.position.set(i, j, k);
+            box.scale.set(0, 0, 0);
             box.visible = false;
             this.boardObject.add(box);
             return box;
+        });
+
+        this.hoverCandidateIndicatorAnimators = array3D(kBoardSize, (i, j, k) => {
+            const animator = new ValueAnimator();
+            const getBox = () => this.hoverCandidateIndicators[i!]![j!]![k!]!;
+            animator.speed = kAnimationSpeed;
+            animator.easeFunction            = kEaseFunction;
+            animator.setValueCallback        = value => getBox().scale.set(value, value, value);
+            animator.getValueCallback        = ()    => getBox().scale.x;
+            animator.setZeroValueCallback    = () => getBox().visible = false;
+            animator.setNonZeroValueCallback = () => getBox().visible = true;
+            return animator;
         });
     }
 
     private myTurn: boolean = false;
     private isFirstMove: boolean = false;
 
-    public async start() {
+    public async run() {
         await this.loadModels();
 
-        this.canvas.onmousemove = async (e: MouseEvent) => {
+        this.renderer.onBeforeRender = () => {
+            array3D(kBoardSize, (i, j, k) => [i, j, k])
+                .flat()
+                .flat()
+                .forEach(([i, j, k]) => {
+                    this.boxAnimators                    [i!]![j!]![k!]!.update(kAnimationFrameTime);
+                    this.hoverCandidateIndicatorAnimators[i!]![j!]![k!]!.update(kAnimationFrameTime);
+                });
+            this.hoverIndicator.update(kAnimationFrameTime);
+            this.prevHoverIndicator.update(kAnimationFrameTime);
+        };
+
+        this.canvas.addEventListener('mousemove', async (e: MouseEvent) => {
             if (! this.myTurn) return;
             if (this.mouseDownPosition) return;
+            this.prevHoverPosition = this.hoverPosition;
+            const prevHoverIndicator = this.prevHoverIndicator;
             if (this.isFirstMove)
                 this.updateHoverPositionForFirstMove();
             else
                 this.updateHoverPosition(e.clientX, e.clientY);
-            this.onHoverStateChanged();
-        };
-        this.canvas.onmousedown = (e: MouseEvent) => {
-            this.mouseDownPosition = new three.Vector2(e.clientX, e.clientY);
-        }
-        this.canvas.onclick = async (e) => {
+            if (! this.prevHoverPosition ||
+                ! this.hoverPosition ||
+                [0, 1, 2].some(i => this.prevHoverPosition![i] !== this.hoverPosition![i])) {
+                this.prevHoverIndicator = this.hoverIndicator;
+                this.hoverIndicator = prevHoverIndicator;
+                this.onHoverStateChanged();
+            }
+        });
+        this.canvas.addEventListener('mousedown', (e: MouseEvent) => {
+            this.mouseDownPosition = new Vector2(e.clientX, e.clientY);
+        });
+        this.canvas.addEventListener('click', async (e) => {
             const mouseDownPosition = this.mouseDownPosition;
             this.mouseDownPosition = null;
             if (this.myTurn &&
                 this.hoverPosition &&
                 mouseDownPosition &&
-                mouseDownPosition.equals(new three.Vector2(e.clientX, e.clientY))) {
-                await this.api.move(new three.Vector3(
+                mouseDownPosition.equals(new Vector2(e.clientX, e.clientY))) {
+                this.hoverIndicator.animateOut();
+                this.prevHoverIndicator.animateOut();
+                await this.api.move(new Vector3(
                     this.hoverPosition[0],
                     this.hoverPosition[1],
                     this.hoverPosition[2]));
                 await this.waitForMyTurn();
             }
-        }
-        this.waitForMyTurn();
+        });
+
+        await this.waitForMyTurn();
     }
 
     private async waitForMyTurn() {
@@ -139,68 +209,71 @@ export class Game {
             if (this.myTurn) break;
             await new Promise((resolve) => setTimeout(resolve, 1000));
         }
-        alert("Your turn!");
     }
 
     private async loadModels() {
         const loader = new OBJLoader();
         const boxLoaded = await loader.loadAsync("/static/models/box.obj");
-        let boxGeometry: three.BufferGeometry = undefined as any;
+        let boxGeometry: BufferGeometry = undefined as any;
         boxLoaded.traverse(child => {
-            if (child instanceof three.Mesh) {
+            if (child instanceof Mesh) {
                 boxGeometry = child.geometry;
             }
         });
 
         this.boxGeometry = boxGeometry;
         this.boxGeometry.scale(kBoxScale, kBoxScale, kBoxScale);
-        this.boxObjects = array3D(this.boardSize, (i, j, k) => {
-            const box = new three.Mesh(this.boxGeometry, this.boxMaterials[BoxState.Player]!);
+        this.boxes = array3D(kBoardSize, (i, j, k) => {
+            const box = new Mesh(this.boxGeometry, this.boxMaterials[BoxState.Player]!);
             box.position.set(i, j, k);
+            box.scale.set(0, 0, 0);
             box.visible = false;
             this.boardObject.add(box);
             return box;
         });
 
-        this.hoverObject = new three.Mesh(this.boxGeometry, this.hoverMaterial);
-        this.hoverObject.visible = false;
-        this.boardObject.add(this.hoverObject);
+        this.hoverIndicator     = new HoverIndicator(this.boxGeometry);
+        this.prevHoverIndicator = new HoverIndicator(this.boxGeometry);
+        this.boardObject.add(this.hoverIndicator    .root)
+        this.boardObject.add(this.prevHoverIndicator.root)
     }
 
     private onBoardStateChanged() {
-        array3D(this.boardSize, (i, j, k) => [i, j, k])
+        array3D(kBoardSize, (i, j, k) => [i, j, k])
             .flat()
             .flat()
             .forEach(([i_, j_, k_]) => ((i: number, j: number, k: number) => {
-                const obj = this.boxObjects[i]![j]![k]!;
+                const obj = this.boxes[i]![j]![k]!;
                 const val = this.boardState[i]![j]![k]!
                 obj.material      = this.boxMaterials[val] ?? obj.material;
-                obj.visible       = val !== BoxState.Empty;
                 obj.castShadow    = val !== BoxState.Empty;
                 obj.receiveShadow = val !== BoxState.Empty;
+                this.boxAnimators[i]![j]![k]!.animateTo(val === BoxState.Empty ? 0 : 1);
             })(i_!, j_!, k_!))
-        array3D(this.boardSize, (i, j, k) => [i, j, k])
-            .flat()
-            .flat()
-            .forEach(([i, j, k]) => {
-                this.hoverIndicationObjects[i!]![j!]![k!]!.visible = false;
-            })
-        if (this.myTurn) this.getHoverCandidates()
-            .forEach(([i, j, k]) => {
-                this.hoverIndicationObjects[i!]![j!]![k!]!.visible = true;
-            })
+        if (this.myTurn)
+            this.getHoverCandidates()
+                .forEach(([i_, j_, k_]) => ((i: number, j: number, k: number) => {
+                    this.hoverCandidateIndicatorAnimators[i]![j]![k]!.animateTo(1);
+                })(i_!, j_!, k_!));
+        else
+            array3D(kBoardSize, (i, j, k) => [i, j, k])
+                .flat()
+                .flat()
+                .forEach(([i_, j_, k_]) => ((i: number, j: number, k: number) => {
+                    this.hoverCandidateIndicatorAnimators[i]![j]![k]!.animateTo(0);
+                })(i_!, j_!, k_!));
     }
     
     private onHoverStateChanged() {
+        if (this.prevHoverPosition) {
+            this.prevHoverIndicator.animateOut();
+        }
         if (this.hoverPosition) {
-            this.hoverObject.visible = true;
-            this.hoverObject.position.set(
+            this.hoverIndicator.setPosition(new Vector3(
                 this.hoverPosition[0],
                 this.hoverPosition[1],
-                this.hoverPosition[2]);
-        }
-        else {
-            this.hoverObject.visible = false;
+                this.hoverPosition[2]));
+            this.hoverIndicator.animateIn();
         }
     }
 
@@ -209,10 +282,11 @@ export class Game {
         const hoverCandidate = this.getHoverCandidates();
         const raycaster = this.renderer.getRayCaster(mouseX, mouseY);
         const intersections = raycaster.intersectObjects(
-            hoverCandidate.map(([i, j, k]) => this.hoverDetectionObjects[i!]![j!]![k!]!));
+            hoverCandidate.map(([i, j, k]) => this.hoverProbes[i!]![j!]![k!]!));
         if (intersections.length > 0) {
             const obj = intersections[0]!.object;
-            const [i, j, k] = hoverCandidate.find(([i, j, k]) => this.hoverDetectionObjects[i!]![j!]![k!]! === obj)!;
+            const [i, j, k] = hoverCandidate.find(([i, j, k]) =>
+                this.hoverProbes[i!]![j!]![k!]! === obj)!;
             this.hoverPosition = [i!, j!, k!];
             return;
         }
@@ -220,15 +294,15 @@ export class Game {
 
     private updateHoverPositionForFirstMove() {
         this.hoverPosition = [
-            (this.boardSize[0] - 1) / 2,
-            (this.boardSize[0] - 1) / 2,
-            (this.boardSize[0] - 1) / 2,
+            (kBoardSize[0] - 1) / 2,
+            (kBoardSize[0] - 1) / 2,
+            (kBoardSize[0] - 1) / 2,
         ]
     }
 
     private getHoverCandidates() {
         return Array.from(
-            array3D(this.boardSize, (i, j, k) => [i, j, k])
+            array3D(kBoardSize, (i, j, k) => [i, j, k])
                 .flat()
                 .flat()
                 .filter(([i, j, k]) => this.isHoverCandidate(i!, j!, k!)));
@@ -237,14 +311,14 @@ export class Game {
     private isHoverCandidate(i: number, j: number, k: number): boolean {
         return (
             this.boardState[i]![j]![k]! === BoxState.Empty &&
-            array3D([3, 3, 3], (i, j, k) => [i - 1, j - 1, k - 1])
+            array3D([5, 5, 5], (i, j, k) => [i - 2, j - 2, k - 2])
                 .flat()
                 .flat()
                 .some(([di_, dj_, dk_]) => ((di, dj, dk) =>
                     Math.abs(di) + Math.abs(dj) + Math.abs(dk) <= 2 &&
-                    i + di > 0 && i + di < this.boardSize[0] &&
-                    j + dj > 0 && j + dj < this.boardSize[1] &&
-                    k + dk > 0 && k + dk < this.boardSize[2] &&
+                    i + di > 0 && i + di < kBoardSize[0] &&
+                    j + dj > 0 && j + dj < kBoardSize[1] &&
+                    k + dk > 0 && k + dk < kBoardSize[2] &&
                     this.boardState[i + di]![j + dj]![k + dk]! !== BoxState.Empty)(
                     di_!, dj_!, dk_!)));
     }
