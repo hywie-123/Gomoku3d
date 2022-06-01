@@ -24,12 +24,16 @@ export function HomeLogin(props: {
     const [openCreateAccountDialog, setOpenCreateAccountDialog] = useState(false);
     return <Fragment>
         <TextField
-            variant='standard' error={!!errorMessage} autoFocus
+            variant='standard' error={!!errorMessage} autoFocus css={css({
+                width: '100%',
+            })}
             id="username"
             placeholder="User Name"
             onChange={() => setErrorMessage("") }/>
         <TextField
-            variant='standard' error={!!errorMessage}
+            variant='standard' error={!!errorMessage} css={css({
+                width: '100%',
+            })}
             id="password"
             type='password'
             placeholder="Password"

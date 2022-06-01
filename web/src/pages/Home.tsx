@@ -44,10 +44,10 @@ export function Home(props: PageProps) {
     }, []);
 
     return <Container maxWidth="xs" css={css({
-        padding: "96px 0",
+        padding: "96px 48px",
     })}>
         <Typography variant='h1' color='primary' css={css({
-            fontSize: "4.5rem",
+            fontSize: "calc(min(56px, 15vw))",
             textAlign: 'center',
         })}>Gomoku3D</Typography>
         <Grid container css={css({
@@ -109,7 +109,7 @@ export function Home(props: PageProps) {
         </Grid>
         <Typography css={css({ textAlign: 'center' })}>
             Open source under GPLv3 on&nbsp;
-            <a href="https://github.com/PKU-Nekomaru/">GitHub</a>
+            <a href="https://github.com/Nekomaru-PKU/Gomoku3d">GitHub</a>
         </Typography>
         <Backdrop open={loading}>
             <LinearProgress  css={css({
