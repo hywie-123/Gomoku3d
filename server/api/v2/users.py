@@ -95,6 +95,11 @@ def users_post():
             "status": "error",
             "message": "Password is not provided."
         }, 400
+    if username == "__internal__":
+        return {
+            "status": "error",
+            "message": "This user name cannot be used."
+        }, 400
     user = DbUser.select().where(DbUser.username == username)
     if user.count() > 0:
         return {
