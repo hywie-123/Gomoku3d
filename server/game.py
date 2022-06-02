@@ -1,6 +1,6 @@
 from typing import *
 
-BOARD_SIZE = (11, 11, 11)
+BOARD_SIZE = 11
 COUNT_TO_WIN = 5
 
 GET_BOARD_EMPTY     = 0
@@ -18,9 +18,9 @@ class Game:
             lambda _: list(map(
                 lambda _: list(map(
                     lambda _: '',
-                    range(BOARD_SIZE[2]))),
-                range(BOARD_SIZE[1]))),
-            range(BOARD_SIZE[0])))
+                    range(BOARD_SIZE))),
+                range(BOARD_SIZE))),
+            range(BOARD_SIZE)))
 
     def get_board(self, username):
         return list(map(
@@ -39,20 +39,20 @@ class Game:
             raise Exception("Game is already over")
         if username != self.next:
             raise Exception("It's not your turn!")
-        if position[0] < 0 or position[0] >= BOARD_SIZE[0]:
+        if position[0] < 0 or position[0] >= BOARD_SIZE:
             raise Exception("Position out of range!")
-        if position[1] < 0 or position[1] >= BOARD_SIZE[1]:
+        if position[1] < 0 or position[1] >= BOARD_SIZE:
             raise Exception("Position out of range!")
-        if position[2] < 0 or position[2] >= BOARD_SIZE[2]:
+        if position[2] < 0 or position[2] >= BOARD_SIZE:
             raise Exception("Position out of range!")
         if self._board[position[0]][position[1]][position[2]] != '':
             raise Exception("Position is not empty!")
         self._board[position[0]][position[1]][position[2]] = username
         self.next = self.player0 if username == self.player1 else self.player1
-        for x in range(BOARD_SIZE[0]):
-            for y in range(BOARD_SIZE[1]):
+        for x in range(BOARD_SIZE):
+            for y in range(BOARD_SIZE):
                 cnt = 0
-                for z in range(BOARD_SIZE[2]):
+                for z in range(BOARD_SIZE):
                     if self._board[x][y][z] == username:
                         cnt += 1
                     else:
@@ -60,10 +60,10 @@ class Game:
                     if cnt == COUNT_TO_WIN:
                         self.winner = username
                         return
-        for y in range(BOARD_SIZE[1]):
-            for z in range(BOARD_SIZE[2]):
+        for y in range(BOARD_SIZE):
+            for z in range(BOARD_SIZE):
                 cnt = 0
-                for x in range(BOARD_SIZE[0]):
+                for x in range(BOARD_SIZE):
                     if self._board[x][y][z] == username:
                         cnt += 1
                     else:
@@ -71,11 +71,50 @@ class Game:
                     if cnt == COUNT_TO_WIN:
                         self.winner = username
                         return
-        for z in range(BOARD_SIZE[2]):
-            for x in range(BOARD_SIZE[0]):
+        for z in range(BOARD_SIZE):
+            for x in range(BOARD_SIZE):
                 cnt = 0
-                for y in range(BOARD_SIZE[1]):
+                for y in range(BOARD_SIZE):
                     if self._board[x][y][z] == username:
+                        cnt += 1
+                    else:
+                        cnt = 0
+                    if cnt == COUNT_TO_WIN:
+                        self.winner = username
+                        return
+        for x in range(BOARD_SIZE):
+            for y_plus_z in range(BOARD_SIZE + BOARD_SIZE - 1):
+                cnt = 0
+                for y in range(
+                    max(y_plus_z - BOARD_SIZE + 1, 0),
+                    min(y_plus_z              + 1, BOARD_SIZE)):
+                    if self._board[x][y][y_plus_z - y] == username:
+                        cnt += 1
+                    else:
+                        cnt = 0
+                    if cnt == COUNT_TO_WIN:
+                        self.winner = username
+                        return
+        for y in range(BOARD_SIZE):
+            for x_plus_z in range(BOARD_SIZE + BOARD_SIZE - 1):
+                cnt = 0
+                for x in range(
+                    max(y_plus_z - BOARD_SIZE + 1, 0),
+                    min(y_plus_z              + 1, BOARD_SIZE)):
+                    if self._board[x][y][x_plus_z - x] == username:
+                        cnt += 1
+                    else:
+                        cnt = 0
+                    if cnt == COUNT_TO_WIN:
+                        self.winner = username
+                        return
+        for z in range(BOARD_SIZE):
+            for x_plus_y in range(BOARD_SIZE + BOARD_SIZE - 1):
+                cnt = 0
+                for x in range(
+                    max(x_plus_y - BOARD_SIZE + 1, 0),
+                    min(x_plus_y              + 1, BOARD_SIZE)):
+                    if self._board[x][x_plus_y - x][z] == username:
                         cnt += 1
                     else:
                         cnt = 0
