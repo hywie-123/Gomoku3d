@@ -80,6 +80,9 @@ def val1(tmpt,list):
                         ans=ans-1000*p2
     return ans
 
+#相比原ai.py，对棋盘进行了多步搜索，由于可以多步，按理说不需要ai.py中的相应的权值不同的做法
+#但是，在实际操作中，发现了权值变化会导致无法使用alpha_beta剪枝，因此采取了只走奇数步的做法、
+#该算法仍然可以进行优化
 def dfs(tmpt,deepth,alpha=2147483647,beta=-2147483648):
     ableToMove=[]
     haveChess=[]
@@ -103,10 +106,6 @@ def dfs(tmpt,deepth,alpha=2147483647,beta=-2147483648):
         return ((),val1(tmpt,haveChess))
     anspoint=(0,0,0)
     ans=val1(tmpt,haveChess)
-    # if deepth % 2 == 0:
-    #     beta=max(beta,ans)
-    # else :
-    #     alpha=min(alpha,ans)
     for (x,y,z) in ableToMove :
         tval=0
         if deepth % 2 == 0 :
@@ -132,14 +131,10 @@ def dfs(tmpt,deepth,alpha=2147483647,beta=-2147483648):
 
 
 def nextstep(otable,t):
-    # global wFile
-    # wFile=open("output.txt","w")
     global T
     T=t
-    # table=np.array(otable,dtype=int)
-    # table.shape=(11,11,11)
+    #alpha和beta值初始设为极大和极小
     point=dfs(otable,0,2147483647,-2147483648)[0]
-    # wFile.close()
     return point
 
 if __name__ == '__main__':

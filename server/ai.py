@@ -19,6 +19,8 @@ next=[
     (1,0,0),(0,1,0),(0,0,1),(1,1,0),(1,0,1),(0,1,1)
 ]
 
+#val1函数为为当前棋盘估价的估价函数，根据五连，四连，三连等多种情况进行估价
+#同时，相同的四连、三连等敌方的权重比我方大，防止为了下出我方四连而忽略对方四连的情况
 def val1(tmpt,list):
     ans=0
     type=1
@@ -90,6 +92,7 @@ def val1(tmpt,list):
 def dfs(tmpt,deepth):
     ableToMove=[]
     haveChess=[]
+    #将所有的可以下的位置加入ableToMove的list，将有棋子的位置加入haveChess的list
     for x in range(0,11):
         for y in range(0,11):
             for z in range(0,11):
@@ -109,7 +112,10 @@ def dfs(tmpt,deepth):
     if deepth == 1:
         return ((),val1(tmpt,haveChess))
     anspoint=(0,0,0)
+    #预先将当前棋盘的估价函数作为最低的ans
+    #理论上，我方下完棋后，棋盘的估价只会变高不会变低
     ans=val1(tmpt,haveChess)
+    #遍历所有可以下的位置，对下完后的棋盘估价（deepth%2为了区分敌我，不过在该程序中只有一步棋，因此无用）
     for (x,y,z) in ableToMove :
         tval=0
         if deepth % 2 == 0 :
@@ -129,14 +135,10 @@ def dfs(tmpt,deepth):
     return (anspoint,ans)
 
 
-
+#通过调用nextstep函数来进行下一步的计算
 def nextstep(otable):
-    # global wFile
-    # wFile=open("output.txt","w")
     global table
     table = otable
-    # table=np.array(otable,dtype=int)
-    # table.shape=(11,11,11)
+    #写做dfs事实上只是一个对当前所有可下位置的遍历函数，在alpha_beta版本中才用作搜索
     point=dfs(table,0)[0]
-    # wFile.close()
     return point
